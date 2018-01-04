@@ -1,0 +1,385 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+import numpy as np
+import random
+import time
+import threading
+import win32api
+from fractions import Fraction
+
+
+# 生成指定数量的随机运算符
+def produce_operators(op_num=3):
+    op = []                        # 记录生成的op_num个四则运算操作数
+    for i in xrange(op_num):
+        temp = random.choice(['＋','－','×','÷'])
+        op.append(temp)
+    return op
+
+# 生成指定数量的随机整数和随机真分数
+def produce_numbers(int_num=2,pro_frac_num=2):
+    num = []                      # 记录生成的op_num+1个数（包括整数和真分数）
+    for i in xrange(int_num):
+        int_number = random.randint(0,99)
+        temp = Fraction(int_number, 1)  # 生成随机整数
+        num.append(temp)
+    for i in xrange(pro_frac_num):
+        denominator = random.randint(1,99)  # 分母（分母不为0）
+        numerator = random.randint(0,denominator-1) # 分子
+        proper_fraction = Fraction(numerator,denominator) # 生成随机真分数
+        num.append(proper_fraction)
+    return num
+
+# 生成题目
+def produce_problem(op_num,num,op):
+    problem = []
+    for i in xrange(op_num):
+        number = random.choice(num)
+        problem.append(number)
+        num.remove(number)
+        operator = random.choice(op)
+        problem.append(operator)
+        op.remove(operator)
+        if i == op_num - 1:
+            problem.append(num[0])
+    return problem
+
+# 打印题目
+def display_problem(problem):
+    record_problem = ''
+    for i in problem:
+        temp = str(i)
+        record_problem = record_problem +temp
+    record_problem = record_problem + '='
+    # print record_problem,
+    #print unicode(record_problem, 'utf-8').encode('gbk'),
+    return record_problem
+
+# 计算题目正确结果
+def calculate_result(problem):
+    result = ''
+    for i in problem:
+        if type(i) == type(Fraction(2,3)):
+            numerator_temp = i.numerator
+            denominator_temp = i.denominator
+            temp = 'Fraction(%d,%d)'%(numerator_temp,denominator_temp)
+        else:
+            if i == '＋':
+                temp = '+'
+            elif i == '－':
+                temp = '-'
+            elif i == '×':
+                temp = '*'
+            else:
+                temp = '/'
+        result = result + temp
+    final_result = str(eval(result))
+    # print result
+    # print final_result
+    return final_result
+
+# 记录测试信息
+def record_test(show_problem, result, answer, judge_result):
+    message = []
+    message.append(str(show_problem) + '    ')
+    message.append(str(result) + '    ')
+    message.append(str(answer) + '    ')
+    message.append(str(judge_result) + '    \n')
+    return np.array(message)
+
+# 产生考试试题并记录试题有关信息
+def record_examination():
+    op_num = random.randint(1, 10)  # 随机生成的运算符个数
+    pro_frac_num = random.randint(0, op_num)  # 随机生成的真分数个数
+    int_num = op_num + 1 - pro_frac_num  # 生成整数个数
+    op = produce_operators(op_num)  # 随机生成指定数量的运算符
+    num = produce_numbers(int_num, pro_frac_num)  # 生成指定数量的随机整数和随机真分数
+    problem = produce_problem(op_num, num, op)  # 生成题目
+    result = calculate_result(problem)  # 计算题目正确结果
+    show_problem = display_problem(problem)  # 打印题目
+    isrepetition(show_problem, 'examination')
+    add, sub, mul, div = 0, 0, 0, 0
+    for i in problem:
+        if i == '＋':
+            add += 1
+        elif i == '－':
+            sub += 1
+        elif i == '×':
+            mul += 1
+        elif i == '÷':
+            div += 1
+    result = Fraction(result)
+    return np.array([str(show_problem) + '    ', str(add) + '    ', str(sub) + '    ', str(mul) + '    ',
+                     str(div) + '    ', str(result.numerator) + '    ', str(result.denominator) + '    '
+                        ,str(result) + '    ',str(0) + '    \n'])
+
+
+# 判断答题者答案是否正确
+def judge(answer,result,control=1):
+    if control != 1:
+        if answer == result:  # 判断正误
+            return 1
+        else:
+            return 0
+    else:
+        if answer == result:
+            print u'回答正确！'
+            return 1
+        else:
+            print u'回答错误！正确答案是: %s'%(result)
+            return 0
+
+# 判断题目是否有可能重复（设置异常）
+def isrepetition(problem,choose):
+    global test_data
+    global examination_data
+    if choose == 'test':
+        if problem in test_data[:,0]:
+            raise NameError
+    elif choose == 'examination':
+        if problem in examination_data[:,0]:
+            raise NameError
+    return None
+
+# 对答题者进行测试
+def test():
+    global message_flag0
+    op_num = random.randint(1,10)  # 随机生成的运算符个数
+    pro_frac_num = random.randint(0,op_num)  # 随机生成的真分数个数
+    int_num = op_num + 1 - pro_frac_num  # 生成整数个数
+    op = produce_operators(op_num)        # 随机生成指定数量的运算符
+    num = produce_numbers(int_num, pro_frac_num)   # 生成指定数量的随机整数和随机真分数
+    problem = produce_problem(op_num, num, op)     # 生成题目
+    result = calculate_result(problem)             # 计算题目正确结果
+    show_problem = display_problem(problem)
+    isrepetition(show_problem + '    ','test')
+    # print show_problem,                           # 打印题目
+    print unicode(show_problem, 'utf-8').encode('gbk')
+    answer = raw_input('')                        # 读入答题者答案
+    if message_flag0 == 0:
+        print u'测试时间到！'
+        return ['--------------------------------    ','--------------------------------    ','','']
+    else:
+        judge_result = judge(answer,result)            # 判断答题者答案
+        return record_test(show_problem, result, answer, judge_result)
+
+def examination():
+    global examination_data
+    global message_flag1
+    try:
+        answer = str(raw_input())
+        if message_flag1 == 1:
+            if ':' in answer:
+                index = answer.find(':')
+                #print examination_data[int(answer[:index]),7]
+                examination_data[int(answer[:index]),8] = str(judge(examination_data[int(answer[:index]),7],
+                                                                    answer[index+1:].strip() +  '    ',0)) +  '    \n'
+                print u'(%d)题回答完毕' % (int(answer[:index]))
+            else:
+                print u'请按正确格式输入'
+        else:
+            print u'考试时间到！'
+    except ValueError:
+        print u'请按正确格式输入'
+    except IndexError:
+        print u'请按正确格式输入'
+    return None
+
+# 计算套题中每题的分值
+def calculate_score():
+    global examination_data
+    print u'正在计算本次考试成绩......'
+    score = np.zeros([examination_data.shape[0],3])
+    temp0 = examination_data[:, 1:5].astype('float')
+    sum_temp0 = sum(sum(temp0))
+    temp1 = np.log(abs(examination_data[:,5:7].astype('float'))+3)
+    sum_temp1 = sum(sum(temp1))
+    for i in xrange(examination_data.shape[0]):
+        score[i,0] = 50*(1.0*sum(temp0[i])/sum_temp0)
+        score[i,1] = 50*(1.0*sum(temp1[i])/sum_temp1)
+        score[i,2] = examination_data[i,8]
+    final_score = 0
+    sum1 = 0
+    for i in xrange(score.shape[0]):
+        #print score[i]
+        if score[i,2] == 1:
+            final_score = final_score + score[i,0] + score[i,1]
+    return final_score
+
+
+class timer0(threading.Thread):
+    def run(self):
+        global message_flag0
+        global test_data
+        while message_flag0 == 1:
+            try:
+                test_data = np.row_stack([test_data, test()])
+            except ZeroDivisionError:
+                # print u'四则运算题目除数不能为0'
+                pass
+            except NameError:
+                # print u'该题重复！'
+                pass
+
+# 设计测试时间
+def test_time(time0):
+    global message_flag0
+    threadone = timer0()
+    threadone.start()
+    time.sleep(time0)
+    message_flag0 = 0
+    return None
+
+class timer1(threading.Thread):
+    def run(self):
+        global message_flag1
+        while message_flag1 == 1:
+            examination()
+        return None
+
+# 设计考试时间
+def examination_time(time0):
+    global message_flag1
+    threadone = timer1()
+    threadone.start()
+    time.sleep(time0)
+    message_flag1 = 0
+    return None
+
+# 计算测试正确率
+def calculate_accuracy():
+    global test_data
+    correct_question_num = 0
+    total_question_num = test_data.shape[0] - 1
+    for i in xrange(total_question_num):
+        correct_question_num = correct_question_num + int(test_data[i,3])
+    if total_question_num == 0:
+        accuracy = "{:%}".format(0)
+    else:
+
+        accuracy = "{:%}".format(1.0*correct_question_num/total_question_num)
+    test_data[total_question_num, 2] = str(total_question_num) + '    '
+    test_data[total_question_num, 3] = str(accuracy) + '    \n'
+    #print accuracy
+    #print total_question_num
+    return None
+
+# 打印测试试题等信息
+def output_testdata(name,control=0):
+    global test_data
+    global examination_data
+    # test_data_path = '%s'%(name)
+    test_data_path = '%s' % ('E:\Calculator\\' + name)
+    f = open(test_data_path,'a')
+    if control == 0:
+        f.write('序号  题目  正确答案  答题者答案  是否正确（0错误 1正确）\n')
+        for i in xrange(test_data.shape[0]):
+            f.write('（%d） '%(i+1))
+            f.writelines(test_data[i])
+            f.write('\n')
+        f.close()
+    elif control == 1:
+        f.write('序号  题目  加号数  减号数  乘号数  除号数  正确答案分子  '
+                '正确答案分母  正确答案  答题者回答（0错误 1正确）\n')
+        for i in xrange(examination_data.shape[0]):
+            f.write('（%d） '%(i+1))
+            f.writelines(examination_data[i])
+            f.write('\n')
+        f.close()
+
+def runtest():
+    # time0 = float(raw_input('输入你想要设定的测试时间(s)： '))  # 设置测试时间
+    time0 = float(raw_input(unicode('输入你想要设定的测试时间(s)： ', 'utf-8').encode('gbk')))     # 设置测试时间
+    test_time(time0)
+    win32api.keybd_event(32, 0, 0, 0)  # 模拟按下键盘空格键
+    win32api.keybd_event(13, 0, 0, 0)  # 模拟按下键盘回车键
+    time.sleep(2)
+    calculate_accuracy()  # 计算本次测试答题者的正确率
+    # print_signal = raw_input('是否打印本次测试，输入yes打印，按其他任意键退出： ')
+    print_signal = raw_input(unicode('是否打印本次测试，输入yes打印，按其他任意键退出： ', 'utf-8').encode('gbk'))
+    if print_signal.lower() == 'yes':
+        output_testdata('test_data.txt')
+    return None
+
+def runpractice():
+    global test_data
+    # n = int(raw_input('输入你想要的题目数量： '))
+    n = int(raw_input(unicode('输入你想要的题目数量： ', 'utf-8').encode('gbk')))
+    while n > 0:
+        try:
+            test_data = np.row_stack([test_data, test()])
+            n = n - 1
+        except ZeroDivisionError:
+            # print u'四则运算题目除数不能为0'
+            pass
+        except NameError:
+            # print u'该题重复！'
+            pass
+    #print_signal = raw_input('是否打印本次测试，输入yes打印，按其他任意键退出： ')
+    print_signal = raw_input(unicode('是否打印本次测试，输入yes打印，按其他任意键退出： ', 'utf-8').encode('gbk'))
+    if print_signal.lower() == 'yes':
+        output_testdata('practice_data.txt')
+    return None
+
+def runexamination():
+    global examination_data
+    # n = int(raw_input('输入你想要的题目数量： '))
+    n = int(raw_input(unicode('输入你想要的题目数量： ', 'utf-8').encode('gbk')))
+    # time0 = float(raw_input('输入你想要设定的测试时间(s)： '))  # 设置测试时间
+    time0 = float(raw_input(unicode('输入你想要设定的测试时间(s)： ', 'utf-8').encode('gbk')))      # 设置测试时间
+    print u'正在出题......'
+    while n > 0:
+        try:
+            examination_data = np.row_stack([examination_data, record_examination()])
+            n = n - 1
+        except ZeroDivisionError:
+            # print u'四则运算题目除数不能为0'
+            pass
+        except NameError:
+            # print u'该题重复！'
+            pass
+    print u'考试前，请仔细阅读本次考试说明，本次考试共有%d道题目，满分100分，能约分的题目必须约分，' \
+          u'输入"题号：答案"来作答，比如第0题答案为67/34，' \
+          u'要回答第0题，请输入"0:67/34"(不用加双引号,冒号为英文字符)'%(examination_data.shape[0])
+    # ready = str(raw_input('输入OK开始答题:  '))
+    ready = str(raw_input(unicode('输入OK开始答题: ', 'utf-8').encode('gbk')))
+    if ready.lower() == 'ok':
+        for i in xrange(examination_data.shape[0]):
+            print '(%d)'%(i),
+            print unicode(examination_data[i,0], 'utf-8').encode('gbk')
+    examination_time(time0)
+    # for i in xrange(examination_data.shape[0]):
+    #     print examination_data[i]
+    win32api.keybd_event(32, 0, 0, 0)  # 模拟按下键盘空格键
+    win32api.keybd_event(13, 0, 0, 0)  # 模拟按下键盘回车键
+    time.sleep(2)
+    print u'本次考试的成绩是：%.2f分'%(calculate_score())
+    #print_signal = raw_input('是否打印本次测试，输入yes打印，按其他任意键退出： ')
+    print_signal = raw_input(unicode('是否打印本次测试，输入yes打印，按其他任意键退出： ', 'utf-8').encode('gbk'))
+    if print_signal.lower() == 'yes':
+        output_testdata('examination_data.txt',1)
+    return None
+
+
+
+
+test_data = np.zeros([0, 4])  # 记录题目、正确答案、答题者答案、是否正确
+examination_data = np.zeros([0, 9])
+message_flag0 = 1
+message_flag1 = 1
+if __name__=="__main__":
+    # choose = raw_input('输入test进入测试模式，输入practice进入练习模式，'
+    #                    '输入examination进入考试模式，按其他任意键退出： ')
+    choose = raw_input(unicode('输入test进入测试模式，输入practice进入练习模式，'
+                               '输入examination进入考试模式，按其他任意键退出： ', 'utf-8').encode('gbk'))
+    if choose == 'test':
+        runtest()
+    elif choose == 'practice':
+        runpractice()
+    elif choose == 'examination':
+        runexamination()
+    else:
+        pass
+
+
+
